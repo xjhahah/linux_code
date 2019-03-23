@@ -52,10 +52,83 @@ void AddEventsToEpoll(int epfd,int sock,uint32_t events)
   cout << "epoll add fd: " << sock << endl;
 }
 
-//事件处理函数
-void HandlerEvents(int epfd,struct epoll_revs[],int num,int listen_sock)
+//修改事件
+void ExchangeEventFromEpoll(int epfd,int sock,uint32_t events)
 {
+  struct epoll_event ev;
+  ev.events = events;
+  ev.data.fd = sock;
 
+  epoll_ctl(epfd,EPOLL_CTL_MOD,sock,&ev);
+  cout << "mod epoll fd : " << sock << endl;
+}
+
+//将事件从epoll中删除
+void DelEventFromEpoll(int epfd,int sock)
+{
+  cout << "delete epoll fd: " << sock << endl;
+  epoll_ctl(epfd,EPOLL_CTL_DEL,sock,NULL);
+}
+//事件处理函数
+void HandlerEvents(int epfd,struct epoll_event revs[],int num,int listen_sock)
+{
+  for(int i=0; i < num; ++i)
+  {
+    int sock = revs[i].data.fd;
+    uint32_t events = revs[i].events;
+
+    if(events & EPOLLIN)  //读事件
+    {
+      if(listen_sock == sock) //说明是套接字
+      {
+        struct sockaddr_in peer; 
+        socklen_t len = sizeof(peer);
+
+        int new_sock = accept(sock,(struct sockaddr*)&peer,&len);
+        if(new_sock < 0)
+        {
+          cerr << "accept error" << endl;
+          continue;
+        }
+        //有链接接入
+        AddEventsToEpoll(epfd,new_sock,EPOLLIN);
+        cout << "get a new link..." << endl;
+      }
+      else 
+      {
+        char buf[1024];
+        ssize_t s = recv(sock,buf,sizeof(buf),0);
+        if(s > 0)
+        {
+          cout << "########################" << endl;
+          cout << buf << endl;
+          cout << "########################" << endl;
+          ExchangeEventFromEpoll(epfd,sock,EPOLLOUT);
+        }
+        else if(s==0)
+        {
+          close(sock);
+          DelEventFromEpoll(epfd,sock);
+          cout << "client id quit..." << endl;
+        }
+        else 
+        {
+          close(sock);
+          DelEventFromEpoll(epfd,sock);
+        }
+      }
+    }
+    else if(events & EPOLLOUT)  //写事件就绪
+    {
+      string response = "HTTP/1.1 200 OK\r\n\r\n<html><h2>Hello, epoll server</h2></html>";
+      send(sock,response.c_str(),response.size(),0);
+      close(sock);
+      DelEventFromEpoll(epfd,sock);
+    }
+    else{
+      //TODO
+    }
+  }
 }
 int main()
 {
