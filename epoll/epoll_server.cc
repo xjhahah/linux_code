@@ -21,6 +21,9 @@ int StartUp(int port)
     exit(1);
   }
 
+  int opt = 1;
+  setsockopt(sock,SOL_SOCKET,SO_REUSEADDR,&opt,sizeof(opt));
+
   struct sockaddr_in local;
   local.sin_family = AF_INET;
   local.sin_port = htons(port);
@@ -133,7 +136,7 @@ void HandlerEvents(int epfd,struct epoll_event revs[],int num,int listen_sock)
 int main()
 {
   //创建 socket
-  int listen_sock = StartUp(6666);
+  int listen_sock = StartUp(8080);
 
   //创建epoll模型  就绪队列 红黑树 回调函数
   int epfd = epoll_create(256);
