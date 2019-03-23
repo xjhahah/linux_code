@@ -41,6 +41,22 @@ int StartUp(int port)
   return sock;
 }
 
+void AddEventsToEpoll(int epfd,int sock,uint32_t events) 
+{
+  struct epoll_event ev;
+  ev.data.fd = sock;
+  ev.events = events;
+
+  //添加任务
+  epoll_ctl(epfd,EPOLL_CTL_ADD,sock,&ev);
+  cout << "epoll add fd: " << sock << endl;
+}
+
+//事件处理函数
+void HandlerEvents(int epfd,struct epoll_revs[],int num,int listen_sock)
+{
+
+}
 int main()
 {
   //创建 socket
@@ -55,14 +71,28 @@ int main()
     exit(4);
   }
 
+  cout << "epoll fd: " << epfd << endl;
   //添加事件 
-  AddEventsToEpoll(epfd, listen_sock);
-  struct epoll_event[EPOLL_SIZE];
+  AddEventsToEpoll(epfd, listen_sock,EPOLLIN); //EPOLLIN 表示对应的文件描述符可以读
 
-  //epoll_wait
+  struct epoll_event revs[EPOLL_SIZE];
   while(1)
   {
-
+    int timeout = 500;
+    int num = epoll_wait(epfd,revs,EPOLL_SIZE,timeout);  //收集epoll监控就绪的的事件
+    switch(num)
+    {
+      case 0:
+        cout << "time out..." << endl;
+        break;
+      case -1:
+        cout << "epoll wait default..." << endl;
+        break;
+      default:
+        //调用成功，处理事件
+        HandlerEvents(epfd,revs,num,listen_sock);
+        break;
+    }
   }
   return 0;
 }
