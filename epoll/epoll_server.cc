@@ -29,7 +29,7 @@ int StartUp(int port)
   local.sin_port = htons(port);
   local.sin_addr.s_addr = htonl(INADDR_ANY);
 
-  if(bind(sock,(struct sockaddr*)&local, sizeof(local) < 0))
+  if(bind(sock,(struct sockaddr*)&local, sizeof(local)) < 0)
   {
     cerr << "bind error" <<endl;
     exit(2);
@@ -80,7 +80,7 @@ void HandlerEvents(int epfd,struct epoll_event revs[],int num,int listen_sock)
     int sock = revs[i].data.fd;
     uint32_t events = revs[i].events;
 
-    if(events & EPOLLIN)  //读事件
+    if(events & EPOLLIN)  //有事件加入
     {
       if(listen_sock == sock) //说明是套接字
       {
@@ -97,12 +97,14 @@ void HandlerEvents(int epfd,struct epoll_event revs[],int num,int listen_sock)
         AddEventsToEpoll(epfd,new_sock,EPOLLIN);
         cout << "get a new link..." << endl;
       }
-      else 
+      else  //其他文件描述符
       {
-        char buf[1024];
-        ssize_t s = recv(sock,buf,sizeof(buf),0);
+        //read
+        char buf[10240];
+        ssize_t s = recv(sock,buf,sizeof(buf)-1,0);
         if(s > 0)
         {
+          buf[s] = 0;
           cout << "########################" << endl;
           cout << buf << endl;
           cout << "########################" << endl;
@@ -154,7 +156,7 @@ int main()
   struct epoll_event revs[EPOLL_SIZE];
   while(1)
   {
-    int timeout = 500;
+    int timeout = -1;
     int num = epoll_wait(epfd,revs,EPOLL_SIZE,timeout);  //收集epoll监控就绪的的事件
     switch(num)
     {
@@ -162,7 +164,7 @@ int main()
         cout << "time out..." << endl;
         break;
       case -1:
-        cout << "epoll wait default..." << endl;
+        cerr << "epoll wait default..." << endl;
         break;
       default:
         //调用成功，处理事件
