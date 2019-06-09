@@ -7,7 +7,7 @@ class EpollServer
   EpollServer(int port) 
 	  : _port(port)
 	  , _listenfd(-1)
-	  , _eventfd(-1)
+	  , _event_fd(-1)
   {}
 
   //启动服务，开始监听
@@ -16,7 +16,17 @@ class EpollServer
   //事件循环
   void EventLoop();
 
-
+  void SetNonblocking(int sfd){
+    int flag,s;
+  }
+  void OpEvent(int fd,int op,int how,int line){ //how：需要监听的fd
+    struct epoll_event event;
+    event.events = op;   //表示动作（三个宏）
+    event.data.fd = fd;  //epoll_create()返回值（epoll句柄）
+    if(epoll_ctl(_event_fd,how,fd,&event) < 0){
+      ErrorDebug("epoll_ctl.fd: %d + how: %d + line: %d",fd,how,line);
+    }
+  }
 
   virtual ~EpollServer() { 
 	  if (_listenfd != -1) {
@@ -29,6 +39,6 @@ class EpollServer
 	 int _port; //端口号
   
 	 int _event;  //epoll事件
-	 int _eventfd; //事件文件描述符
-	 static const size_t MAX_EVENT; //最大的事件数
+	 int _event_fd; //事件文件描述符
+	 static const size_t _MAX_EVENT; //最大的事件数
 };
