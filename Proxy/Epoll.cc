@@ -58,7 +58,38 @@ void EpollServer::EventLoop()
 
     for(int i = 0;i < nfds; ++i){
       if(events[i].data.fd == _listenfd){
+        
+        //如果是套接字事件就绪
+        //进入accept操作
+        struct sockaddr_in client;
+        socklen_t len = sizeof(client);
 
+        int newfd = accept(_listenfd,(struct sockaddr*)&client,&len);
+        if(newfd < 0){
+          ErrorDebug("listen error...");
+          continue;
+        }
+
+        TraceDebug("accept new connect:%s:%d",inet_ntoa(client.sin_addr),ntohs(client.sin_port));
+
+        //新连接事件处理函数
+        ConnectEventHandler(newfd);
+      }
+      else if(events[i].events & (EPOLLIN | EPOLLPRI | EPOLLHUP)){
+        //读事件就绪
+        ReadEventHandler(events[i].data.fd);
+      }
+      else if(events[i].events & EPOLLOUT){
+        //写事件就绪
+        WriteEventHandler(events[i].data.fd);
+      }
+      else if(events[i].events & EPOLLERR){
+        //对应描述符发生错误
+        ErrorDebug("错误事件: %d - %d",events[i].events,i);
+      }
+      else{
+        //其他未知错误事件
+        ErrorDebug("未知事件：%d",events[i].events);
       }
     }
   }

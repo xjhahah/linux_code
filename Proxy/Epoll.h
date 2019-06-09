@@ -16,6 +16,10 @@ class EpollServer
   //ÊÂ¼þÑ­»·
   void EventLoop();
 
+  virtual void ConnectEventHandler(int fd) = 0;
+  virtual void ReadEventHandler(int fd) = 0;
+  virtual void WriteEventHandler(int fd) = 0;
+  
   void SetNonblocking(int sfd){
     int flag,s;
   }
