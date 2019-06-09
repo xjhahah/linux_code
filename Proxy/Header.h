@@ -6,6 +6,7 @@
 #include <netinet/ip.h>
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <sys/epoll.h>
 
 
 #include <string.h>
