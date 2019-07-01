@@ -1,16 +1,15 @@
-#include <stdio.h>   	//printf scanf
+ï»¿#include <stdio.h>   	//printf scanf
 #include <fcntl.h>		//open write read lseek close  	 
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <stdlib.h>
-#include <pthread.h>
 
-#include "../include/camera.h"
+#include "camera.h"
 #include "./jpeg/api_v4l2.h"
 #include "jpeglib.h"
-#include "../include/bmp.h"
+
 static unsigned char g_color_buf[FB_SIZE]={0};
 
 int ts_x, ts_y;
@@ -18,9 +17,9 @@ int flag = 1;
 
 int  lcd_fd;
 int *mmap_fd;
-struct jpg_data video_buf;//¶¨Òå½á¹¹Ìå±äÁ¿
+struct jpg_data video_buf;//å®šä¹‰ç»“æ„ä½“å˜é‡
 
-//³õÊ¼»¯LCD
+//åˆå§‹åŒ–LCD
 int lcd_open(void)
 {
 	lcd_fd = open("/dev/fb0", O_RDWR);
@@ -35,27 +34,27 @@ int lcd_open(void)
 
 int mmap_lcd(void)
 {
-	mmap_fd  = (int *)mmap(	NULL, 					//Ó³ÉäÇøµÄ¿ªÊ¼µØÖ·£¬ÉèÖÃÎªNULLÊ±±íÊ¾ÓÉÏµÍ³¾ö¶¨Ó³ÉäÇøµÄÆğÊ¼µØÖ·
-									FB_SIZE, 				//Ó³ÉäÇøµÄ³¤¶È
-									PROT_READ|PROT_WRITE, 	//ÄÚÈİ¿ÉÒÔ±»¶ÁÈ¡ºÍĞ´Èë
-									MAP_SHARED,				//¹²ÏíÄÚ´æ
-									lcd_fd, 				//ÓĞĞ§µÄÎÄ¼şÃèÊö´Ê
-									0						//±»Ó³Éä¶ÔÏóÄÚÈİµÄÆğµã
+	mmap_fd  = (int *)mmap(	NULL, 					//æ˜ å°„åŒºçš„å¼€å§‹åœ°å€ï¼Œè®¾ç½®ä¸ºNULLæ—¶è¡¨ç¤ºç”±ç³»ç»Ÿå†³å®šæ˜ å°„åŒºçš„èµ·å§‹åœ°å€
+									FB_SIZE, 				//æ˜ å°„åŒºçš„é•¿åº¦
+									PROT_READ|PROT_WRITE, 	//å†…å®¹å¯ä»¥è¢«è¯»å–å’Œå†™å…¥
+									MAP_SHARED,				//å…±äº«å†…å­˜
+									lcd_fd, 				//æœ‰æ•ˆçš„æ–‡ä»¶æè¿°è¯
+									0						//è¢«æ˜ å°„å¯¹è±¡å†…å®¹çš„èµ·ç‚¹
 	);
 	return lcd_fd;
 
 }
 
-//LCD»­µã
+//LCDç”»ç‚¹
 void lcd_draw_point(unsigned int x,unsigned int y, unsigned int color)
 {
 	*(mmap_fd+y*800+x)=color;
 }
 
-//ÏÔÊ¾ÉãÏñÍ·²¶×½
+//æ˜¾ç¤ºæ‘„åƒå¤´æ•æ‰
 int show_video_data(unsigned int x,unsigned int y,char *pjpg_buf,unsigned int jpg_buf_size)  
 {
-	/*¶¨Òå½âÂë¶ÔÏó£¬´íÎó´¦Àí¶ÔÏó*/
+	/*å®šä¹‰è§£ç å¯¹è±¡ï¼Œé”™è¯¯å¤„ç†å¯¹è±¡*/
 	struct 	jpeg_decompress_struct 	cinfo;
 	struct 	jpeg_error_mgr 			jerr;	
 	
@@ -72,40 +71,40 @@ int show_video_data(unsigned int x,unsigned int y,char *pjpg_buf,unsigned int jp
 	
 	pjpg = pjpg_buf;
 
-	/*×¢²á³ö´í´¦Àí*/
+	/*æ³¨å†Œå‡ºé”™å¤„ç†*/
 	cinfo.err = jpeg_std_error(&jerr);
 
-	/*´´½¨½âÂë*/
+	/*åˆ›å»ºè§£ç */
 	jpeg_create_decompress(&cinfo);
 
-	/*Ö±½Ó½âÂëÄÚ´æÊı¾İ*/		
+	/*ç›´æ¥è§£ç å†…å­˜æ•°æ®*/		
 	jpeg_mem_src(&cinfo,pjpg,jpg_buf_size);
 	
-	/*¶ÁÎÄ¼şÍ·*/
+	/*è¯»æ–‡ä»¶å¤´*/
 	jpeg_read_header(&cinfo, TRUE);
 
-	/*¿ªÊ¼½âÂë*/
+	/*å¼€å§‹è§£ç */
 	jpeg_start_decompress(&cinfo);	
 	
 	x_e	= x_s+cinfo.output_width;
 	y_e	= y  +cinfo.output_height;	
 
-	/*¶Á½âÂëÊı¾İ*/
+	/*è¯»è§£ç æ•°æ®*/
 	while(cinfo.output_scanline < cinfo.output_height )
 	{		
 		pcolor_buf = g_color_buf;
 			
-		/* ¶ÁÈ¡jpgÒ»ĞĞµÄrgbÖµ */
+		/* è¯»å–jpgä¸€è¡Œçš„rgbå€¼ */
 		jpeg_read_scanlines(&cinfo,&pcolor_buf,1);
 		
 		for(i=0; i<cinfo.output_width; i++)
 		{
-			/* »ñÈ¡rgbÖµ */
+			/* è·å–rgbå€¼ */
 			color = 		*(pcolor_buf+2);
 			color = color | *(pcolor_buf+1)<<8;
 			color = color | *(pcolor_buf)<<16;
 			
-			/* ÏÔÊ¾ÏñËØµã */
+			/* æ˜¾ç¤ºåƒç´ ç‚¹ */
 			lcd_draw_point(x,y,color);
 			
 			pcolor_buf +=3;
@@ -113,24 +112,24 @@ int show_video_data(unsigned int x,unsigned int y,char *pjpg_buf,unsigned int jp
 			x++;
 		}
 		
-		/* »»ĞĞ */
+		/* æ¢è¡Œ */
 		y++;			
 		
 		x = x_s;
 		
 	}		
 			
-	/*½âÂëÍê³É*/
+	/*è§£ç å®Œæˆ*/
 	jpeg_finish_decompress(&cinfo);
 	jpeg_destroy_decompress(&cinfo);
 
 	return 0;
 }
 
-//ÏÔÊ¾Õı³£jpgÍ¼Æ¬
+//æ˜¾ç¤ºæ­£å¸¸jpgå›¾ç‰‡
 int lcd_draw_jpg(unsigned int x,unsigned int y,const char *pjpg_path)  
 {
-	/*¶¨Òå½âÂë¶ÔÏó£¬´íÎó´¦Àí¶ÔÏó*/
+	/*å®šä¹‰è§£ç å¯¹è±¡ï¼Œé”™è¯¯å¤„ç†å¯¹è±¡*/
 	struct 	jpeg_decompress_struct 	cinfo;
 	struct 	jpeg_error_mgr 			jerr;	
 	
@@ -152,7 +151,7 @@ int lcd_draw_jpg(unsigned int x,unsigned int y,const char *pjpg_path)
 
 	if(pjpg_path!=NULL)
 	{
-		/* ÉêÇëjpg×ÊÔ´£¬È¨ÏŞ¿É¶Á¿ÉĞ´ */	
+		/* ç”³è¯·jpgèµ„æºï¼Œæƒé™å¯è¯»å¯å†™ */	
 		jpg_fd=open(pjpg_path,O_RDWR);
 		
 		if(jpg_fd == -1)
@@ -162,55 +161,55 @@ int lcd_draw_jpg(unsigned int x,unsigned int y,const char *pjpg_path)
 		   return -1;	
 		}	
 		
-		/* »ñÈ¡jpgÎÄ¼şµÄ´óĞ¡ */
+		/* è·å–jpgæ–‡ä»¶çš„å¤§å° */
 		jpg_size=file_size_get(pjpg_path);	
 		if(jpg_size<3000)
 			return -1;
 		
-		/* ÎªjpgÎÄ¼şÉêÇëÄÚ´æ¿Õ¼ä */	
+		/* ä¸ºjpgæ–‡ä»¶ç”³è¯·å†…å­˜ç©ºé—´ */	
 		pjpg = malloc(jpg_size);
 
-		/* ¶ÁÈ¡jpgÎÄ¼şËùÓĞÄÚÈİµ½ÄÚ´æ */		
+		/* è¯»å–jpgæ–‡ä»¶æ‰€æœ‰å†…å®¹åˆ°å†…å­˜ */		
 		read(jpg_fd,pjpg,jpg_size);
 	}
 	else
 		return -1;
 
-	/*×¢²á³ö´í´¦Àí*/
+	/*æ³¨å†Œå‡ºé”™å¤„ç†*/
 	cinfo.err = jpeg_std_error(&jerr);
 
-	/*´´½¨½âÂë*/
+	/*åˆ›å»ºè§£ç */
 	jpeg_create_decompress(&cinfo);
 
-	/*Ö±½Ó½âÂëÄÚ´æÊı¾İ*/		
+	/*ç›´æ¥è§£ç å†…å­˜æ•°æ®*/		
 	jpeg_mem_src(&cinfo,pjpg,jpg_size);
 	
-	/*¶ÁÎÄ¼şÍ·*/
+	/*è¯»æ–‡ä»¶å¤´*/
 	jpeg_read_header(&cinfo, TRUE);
 
-	/*¿ªÊ¼½âÂë*/
+	/*å¼€å§‹è§£ç */
 	jpeg_start_decompress(&cinfo);	
 	
 	
 	x_e	= x_s +cinfo.output_width;
 	y_e	= y  +cinfo.output_height;	
 
-	/*¶Á½âÂëÊı¾İ*/
+	/*è¯»è§£ç æ•°æ®*/
 	while(cinfo.output_scanline < cinfo.output_height )
 	{		
 		pcolor_buf = g_color_buf;
 		
-		/* ¶ÁÈ¡jpgÒ»ĞĞµÄrgbÖµ */
+		/* è¯»å–jpgä¸€è¡Œçš„rgbå€¼ */
 		jpeg_read_scanlines(&cinfo,&pcolor_buf,1);
 		
 		for(i=0; i<cinfo.output_width; i++)
 		{	
-			/* »ñÈ¡rgbÖµ */
+			/* è·å–rgbå€¼ */
 			color = 		*(pcolor_buf+2);
 			color = color | *(pcolor_buf+1)<<8;
 			color = color | *(pcolor_buf)<<16;	
 			
-			/* ÏÔÊ¾ÏñËØµã */
+			/* æ˜¾ç¤ºåƒç´ ç‚¹ */
 			lcd_draw_point(x_n,y_n,color);
 			
 			pcolor_buf +=3;
@@ -218,40 +217,40 @@ int lcd_draw_jpg(unsigned int x,unsigned int y,const char *pjpg_path)
 			x_n++;
 		}
 		
-		/* »»ĞĞ */
+		/* æ¢è¡Œ */
 		y_n++;			
 		
 		x_n = x_s;		
 	}		
 			
-	/*½âÂëÍê³É*/
+	/*è§£ç å®Œæˆ*/
 	jpeg_finish_decompress(&cinfo);
 	jpeg_destroy_decompress(&cinfo);
 
 	if(pjpg_path!=NULL)
 	{
-		/* ¹Ø±ÕjpgÎÄ¼ş */
+		/* å…³é—­jpgæ–‡ä»¶ */
 		close(jpg_fd);	
 		
-		/* ÊÍ·ÅjpgÎÄ¼şÄÚ´æ¿Õ¼ä */
+		/* é‡Šæ”¾jpgæ–‡ä»¶å†…å­˜ç©ºé—´ */
 		free(pjpg);		
 	}
 
 	return 0;
 }
 
-//LCD¹Ø±Õ
+//LCDå…³é—­
 void lcd_close(void)
 {
 	
-	/* È¡ÏûÄÚ´æÓ³Éä */
+	/* å–æ¶ˆå†…å­˜æ˜ å°„ */
 	munmap(mmap_fd, FB_SIZE);
 	
-    /* ¹Ø±ÕLCDÉè±¸ */
+	/* å…³é—­LCDè®¾å¤‡ */
 	close(lcd_fd);
 }
 
-//»ñÈ¡jpgÎÄ¼şµÄ´óĞ¡
+//è·å–jpgæ–‡ä»¶çš„å¤§å°
 unsigned long file_size_get(const char *pfile_path)
 {
 	unsigned long filesize = -1;	
@@ -278,94 +277,36 @@ void *start_routine(void *arg)
 	}	
 }
 
-void jpg_save(char* path,char* buf,int size){ 
-    int fd = open(path, O_RDWR|O_CREAT|O_TRUNC);
-	if(fd==-1)
-		printf("save failed!\n");
-	write(fd, buf, size);
-	close(fd);
-}
-
-void jpg_read(char* path){
-    int fd = open(path, O_RDONLY);
-	if(fd==-1)
-		printf("open failed!\n");
-	read(fd, video_buf.jpg_data, sizeof(video_buf.jpg_data));
-	show_video_data(0, 0, video_buf.jpg_data, sizeof(video_buf.jpg_data));
-	close(fd);
-}
-void my_camera()
+int my_camera(void)
 {
-	int fd_jpg = -1;
-	int cnt = 0;
-	char path[21] = {0};
-	lcd_open();//´ò¿ªLCDÆÁÄ»	
-	mmap_lcd();//´´½¨Ó³Éä¹ØÏµ£¬½«DDR3ÖĞ´æ´¢µÄÉãÏñÍ·²É¼¯µÄÊı¾İÓ³Éäµ½LCDÆÁÄ»ÉÏÏÔÊ¾¡£
+	
+	lcd_open();//æ‰“å¼€LCDå±å¹•	
+	mmap_lcd();//åˆ›å»ºæ˜ å°„å…³ç³»ï¼Œå°†DDR3ä¸­å­˜å‚¨çš„æ‘„åƒå¤´é‡‡é›†çš„æ•°æ®æ˜ å°„åˆ°LCDå±å¹•ä¸Šæ˜¾ç¤ºã€‚
 	
 	pthread_t ts_thread;
 	pthread_create(&ts_thread, NULL, start_routine, NULL);
 	
-	linux_v4l2_yuyv_init("/dev/video7");//³õÊ¼»¯ÉãÏñÍ·
-	linux_v4l2_start_yuyv_capturing();//¿ªÆôÉãÏñÍ·²¶×½
-
-    //show_bmp800_480("./desk.bmp");
+	linux_v4l2_yuyv_init("/dev/video7");//åˆå§‹åŒ–æ‘„åƒå¤´
+	linux_v4l2_start_yuyv_capturing();//å¼€å¯æ‘„åƒå¤´æ•æ‰
+	
 	while(1)
 	{
-		if(ts_x>660 && ts_x<790 && ts_y>10 && ts_y<80)//ÊµÊ±¼à¿Ø
+		if(ts_x>660 && ts_x<790 && ts_y>10 && ts_y<60)//å®æ—¶ç›‘æ§
 		{
-			linux_v4l2_get_yuyv_data(&video_buf);//»ñÈ¡ÉãÏñÍ·²¶×½µÄ»­Ãæ	
-			show_video_data(0, 0, video_buf.jpg_data, video_buf.jpg_size);//ÏÔÊ¾ÉãÏñÍ·²¶×½µÄ»­Ãæ
+			linux_v4l2_get_yuyv_data(&video_buf);//è·å–æ‘„åƒå¤´æ•æ‰çš„ç”»é¢	
+			show_video_data(0, 0, video_buf.jpg_data, video_buf.jpg_size);//æ˜¾ç¤ºæ‘„åƒå¤´æ•æ‰çš„ç”»é¢
 		}
 		
-		if(ts_x > 650 && ts_x < 800 && ts_y > 110 && ts_y < 175)  //Â¼Ïñ
+		if(ts_x>660 && ts_x<790 && ts_y>410 && ts_y<480)//é€€å‡ºç›‘æ§
 		{
-            printf("Is video...\n");
-			linux_v4l2_get_yuyv_data(&video_buf);//»ñÈ¡ÉãÏñÍ·²¶×½µÄ»­Ãæ
-			show_video_data(0, 0, video_buf.jpg_data, video_buf.jpg_size);//ÏÔÊ¾ÉãÏñÍ·²¶×½µÄ»­Ãæ
-			sprintf(path, "../image/%d.jpg", cnt);
-			printf("path = %s\n", path);
-            jpg_save(path, video_buf.jpg_data, video_buf.jpg_size);
-            cnt++;
-		}
-		
-        
-		if(ts_x>650 && ts_x<800 && ts_y>220 && ts_y<265)  //²¥·ÅÂ¼ÖÆµÄÍ¼Ïñ
-		{
-            printf("ÕıÔÚ²¥·ÅÂ¼ÖÆµÄÊÓÆµ...\n");
-			//ÀûÓÃÍ¼Æ¬²¥·ÅÊÓÆµ£¬Í¼Æ¬µÄÊıÁ¿¾ÍÊÇcnt
-            int num=0;
-            while(num != cnt){
-                sprintf(path,"../image/%d.jpg",num);
-                jpg_read(path);
-                num++;
-                usleep(10000);
-            }
-            printf("over...\n");
-		}
-		
-        //TODO
-        //Capture   
-        if(ts_x > 650 && ts_x < 800 && ts_y > 310 && ts_y < 360)
-        {
-            linux_v4l2_get_yuyv_data(&video_buf);   //»ñÈ¡ÉãÏñÍ·²¶×½µÄ»­Ãæ	
-			show_video_data(0, 0, video_buf.jpg_data, video_buf.jpg_size);  //ÏÔÊ¾ÉãÏñÍ·²¶×½µÄ»­Ãæ
-			sprintf(path, "../image/save/0%d.jpg", cnt);
-			jpg_save(path, video_buf.jpg_data, video_buf.jpg_size);
-            printf("If you want to view the snapshot,\n");
-            printf("please move to the image directory.\r\n\n");
-        }
-
-
-		if(ts_x>660 && ts_x<790 && ts_y>410 && ts_y<480)    //ÍË³ö¼à¿Ø
-		{
-			printf("\n======ÍË³ö¼à¿Ø======\n");
-            printf("\n========À´×Ô³ÌĞòÔ±µÄË¼¿¼...=========\n");
-            show_bmp800_480("../image/back.bmp");
+			printf("\n======é€€å‡ºç›‘æ§======\n");
+			flag = 0;
 			break;
 		}
 	}
 	
-	//¹Ø±ÕÉãÏñÍ·
+	//å…³é—­æ‘„åƒå¤´
 	linux_v4l2_yuyv_quit();
 	lcd_close();
+	return 0;
 }
