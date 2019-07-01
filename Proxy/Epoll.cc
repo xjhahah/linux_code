@@ -1,13 +1,17 @@
 #include "Epoll.h"
 
+const size_t  EpollServer::_MAX_EVENT = 10000;
 //启动epoll服务器
 void EpollServer::Start()
 {
+  //创建套接字
   _listenfd = socket(AF_INET,SOCK_STREAM,0);
   if(_listenfd==-1){
     ErrorDebug("socket error"); //出错输出到日志当中
     return;
   }
+
+  //绑定端口
   struct sockaddr_in addr;
   memset(&addr,0,sizeof(addr));
   addr.sin_family=AF_INET;
@@ -16,6 +20,12 @@ void EpollServer::Start()
 
   if(bind(_listenfd,(struct sockaddr*)&addr,sizeof(addr)) < 0){
     ErrorDebug("bind error...");
+    return;
+  }
+
+  //监听套接字
+  if(listen(_listenfd,1000) < 0){
+    ErrorDebug("listen error...");
     return;
   }
 
@@ -64,9 +74,10 @@ void EpollServer::EventLoop()
         struct sockaddr_in client;
         socklen_t len = sizeof(client);
 
+        //接受请求连接 
         int newfd = accept(_listenfd,(struct sockaddr*)&client,&len);
         if(newfd < 0){
-          ErrorDebug("listen error...");
+          ErrorDebug("accept error...");
           continue;
         }
 
@@ -75,7 +86,7 @@ void EpollServer::EventLoop()
         //新连接事件处理函数
         ConnectEventHandler(newfd);
       }
-      else if(events[i].events & (EPOLLIN | EPOLLPRI | EPOLLHUP)){
+      else if(events[i].events & EPOLLIN){
         //读事件就绪
         ReadEventHandler(events[i].data.fd);
       }
@@ -91,6 +102,27 @@ void EpollServer::EventLoop()
         //其他未知错误事件
         ErrorDebug("未知事件：%d",events[i].events);
       }
+    }
+  }
+}
+void EpollServer::Forwording(Channel* clientChannel, Channel* serverChannel){
+  
+  const size_t LEN = 4096;
+  char buffer[LEN];
+  int recv_len = recv(clientChannel->_fd,buffer,LEN);
+
+  if(recv_len > 0){
+    int sed_len = send(serverChannel->_fd,buffer,recv_len);
+    if(sed_len < recv_len){
+      //说明有一部分数据没有发送出去
+      
+      SendInLoop(); //将围殴发送的数据交给事件循环函数处理
+    }
+    else if(recv_len == 0){ //表示对方关闭
+
+    }
+    else if(recv_len < 0){ //表示传输超时
+
     }
   }
 }
