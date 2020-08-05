@@ -8,4 +8,5 @@ func main(){
   fmt.Print("hhhhh")
 
   fmt.print("version1")
+  fmt.Print("version2")
 }
